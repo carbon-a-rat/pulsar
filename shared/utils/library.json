@@ -1,0 +1,17 @@
+{
+    "name": "Rocker-Pulsar-Lib",
+    "version": "1.0.0",
+    "description": "Shared code between each boards",
+    
+    "authors":
+    [
+      {
+        "name": "INSA Students",
+        "email": "",
+        "url": ""
+      }
+    ],
+    "license": "GPL",
+    "frameworks": "*",
+    "platforms": "*"
+  }

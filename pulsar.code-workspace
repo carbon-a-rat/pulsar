@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "rocket",
+			"path": "rocket"
+		},
+		{
+			"name": "launch-pad",
+			"path": "launch-pad"
+		}
+	],
+	"settings": {}
+}

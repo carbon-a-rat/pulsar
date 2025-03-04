@@ -20,5 +20,5 @@ We will also use an arduino board and another Feather board for the launch pad.
 
 ### Feather board
 
-follow the tutorial [here](https://learn.adafruit.com/adafruit-feather-huzzah-esp8266/using-arduino-ide).
-
+1. Install platformio plugin in VSCode
+2. On linux: https://docs.platformio.org/en/latest/core/installation/udev-rules.html 
