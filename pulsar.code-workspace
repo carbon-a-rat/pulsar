@@ -8,9 +8,72 @@
 			"path": "rocket"
 		},
 		{
-			"name": "launch-pad",
-			"path": "launch-pad"
+			"name": "launch-pad-rocket",
+			"path": "launch-pad-rocket"
+		},
+
+		{
+			"name": "launchpad-launcher",
+			"path": "launchpad-launcher"
+		},
+		{
+			"name": "launch-pad-server",
+			"path": "launch-pad-server"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"array": "cpp",
+			"deque": "cpp",
+			"algorithm": "cpp",
+			"chrono": "cpp",
+			"functional": "cpp",
+			"iterator": "cpp",
+			"list": "cpp",
+			"set": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"system_error": "cpp",
+			"cctype": "cpp",
+			"cinttypes": "cpp",
+			"cmath": "cpp",
+			"cstdint": "cpp",
+			"cstdio": "cpp",
+			"cstdlib": "cpp",
+			"cwchar": "cpp",
+			"cwctype": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"typeinfo": "cpp",
+			"unordered_map": "cpp",
+			"new": "cpp",
+			"atomic": "cpp",
+			"bit": "cpp",
+			"clocale": "cpp",
+			"compare": "cpp",
+			"concepts": "cpp",
+			"cstdarg": "cpp",
+			"cstddef": "cpp",
+			"cstring": "cpp",
+			"ctime": "cpp",
+			"map": "cpp",
+			"vector": "cpp",
+			"exception": "cpp",
+			"memory": "cpp",
+			"memory_resource": "cpp",
+			"numeric": "cpp",
+			"optional": "cpp",
+			"random": "cpp",
+			"ratio": "cpp",
+			"utility": "cpp",
+			"initializer_list": "cpp",
+			"iosfwd": "cpp",
+			"limits": "cpp",
+			"ostream": "cpp",
+			"ranges": "cpp",
+			"variant": "cpp"
+		}
+	}
 }

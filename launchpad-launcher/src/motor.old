@@ -1,0 +1,37 @@
+
+// put function definitions here:
+int pwm1=9;
+int pwm2=10;
+int ctr_a =9;
+int ctr_b =8;
+int ctr_c =11;
+int ctr_d =10;
+int sd =6;
+int i=0;
+int t=1500;
+#include <Arduino.h>
+#include <Stepper.h>
+
+const int stepsPerRevolution = 2100/2;  // change this to fit the number of steps per revolution
+// for your motor
+
+// initialize the stepper library on pins 8 through 11:
+Stepper myStepper(stepsPerRevolution, 8,10,9, 11);
+
+void motorSetup() {
+    pinMode(ctr_a,OUTPUT);
+    pinMode(ctr_b,OUTPUT);
+    pinMode(ctr_c,OUTPUT);
+    pinMode(ctr_d,OUTPUT); 
+ 
+  // set the speed at 60 rpm:
+  myStepper.setSpeed(20);
+}
+
+
+void motorTurn(float revolutions) {
+    int steps = revolutions * stepsPerRevolution;
+  // step one revolution  in one direction:
+  myStepper.step(steps);
+
+}
