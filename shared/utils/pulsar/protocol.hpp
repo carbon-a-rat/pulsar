@@ -161,7 +161,7 @@ static inline bool request_from_master_callback(ProtocolMessage *message) {
 // as master
 static inline bool send_message_to_slave(ProtocolMessage *message, uint8_t address) {
     Wire.beginTransmission(address);
-    size_t res = Wire.write((char *)message, sizeof(ProtocolMessage));
+    size_t res = Wire.write((uint8_t*)message, sizeof(ProtocolMessage));
     if (res != sizeof(ProtocolMessage)) {
         Serial.println("Error: failed to send message");
         Wire.endTransmission();
@@ -202,7 +202,7 @@ static inline bool setup_communication_master() {
 
 static inline bool setup_communication_slave(int sda, int scl, uint8_t address) {
     //Wire.setClock(20000);
-    Wire.onReceive([](size_t num_bytes) {
+    Wire.onReceive([](int num_bytes) {
         if (num_bytes == sizeof(ProtocolMessage)) {
             Serial.println("Received message");
             ProtocolMessage message;
@@ -219,11 +219,11 @@ static inline bool setup_communication_slave(int sda, int scl, uint8_t address) 
         ProtocolMessage message;
         if (request_from_master_callback(&message)) {
             Serial.println("Sending message");
-            Wire.write((char *)&message, sizeof(ProtocolMessage));
+            Wire.write((uint8_t*)&message, sizeof(ProtocolMessage));
         }
         else {
             Serial.println("Error: no message to send");
-            Wire.write((char *)&message, sizeof(ProtocolMessage));
+            Wire.write((uint8_t*)&message, sizeof(ProtocolMessage));
         }
     });
     return true;
