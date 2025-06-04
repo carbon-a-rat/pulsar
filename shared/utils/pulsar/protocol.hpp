@@ -24,37 +24,37 @@ typedef enum : uint8_t {
 
 
 
-struct [[packed]] LogMessage 
+struct LogMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_LOG;
     uint8_t log_level;
     uint8_t log_length;
     char log[16];
-};
+} __attribute__((packed));
 
-struct [[packed]] PrepareMessage 
+struct PrepareMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_PREPARE;
     uint8_t pressure; // 0-255 -> 0-10bar (float)
     uint8_t water_fill; // 0-255 -> 0-100% (float)
     bool enable_data_logging;
-};
+} __attribute__((packed));
 
-struct [[packed]] PrepareStatusMessage 
+struct  PrepareStatusMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_PREPARE_STATUS;
     uint8_t current_pressure; // 0-255 -> 0-10bar (float)
     uint8_t current_water_fill; // 0-255 -> 0-100% (float)
     bool ready_to_launch;
-};
+} __attribute__((packed));
 
-struct [[packed]] LaunchMessage 
+struct LaunchMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_LAUNCH;
     uint32_t launch_id; // 0-4294967295
-};
+}__attribute__((packed));
 
-struct [[packed]] LaunchStatusMessage 
+struct LaunchStatusMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_LAUNCH_STATUS;
     uint8_t altitude; // 0-255 -> 0-1km (float)
@@ -62,15 +62,15 @@ struct [[packed]] LaunchStatusMessage
     int16_t acceleration[3]; // 0-65556 -> -10g-10g (float)
     int16_t gyro[3]; // 0- -> 0-1000deg/s (float)
     uint8_t battery; // 0-255 -> 0-100% (float)
-};
+}__attribute__((packed));
 
-struct [[packed]] NoneMessage 
+struct NoneMessage 
 {
     static constexpr MessageKind kind = MESSAGE_KIND_NONE;
     bool _empty;
-};
+} __attribute__((packed));
 
-struct [[packed]] ProtocolMessage 
+struct ProtocolMessage 
 {
     uint8_t version : 4;
     uint8_t message_kind : 4;
@@ -81,7 +81,7 @@ struct [[packed]] ProtocolMessage
         LaunchMessage launch_message;
         LaunchStatusMessage launch_status_message;
     };
-};
+}__attribute__((packed)) ;
 
 
 static inline constexpr uint8_t SERVER_S_ADDRESS = 0x08;
@@ -90,10 +90,10 @@ static inline constexpr uint8_t ROCKET_S_ADDRESS = 0x0A;
 
 
 static size_t buffered_message = 0;
-static ProtocolMessage send_message_buffer[128];
+static ProtocolMessage send_message_buffer[64];
 
 static size_t received_message = 0;
-static ProtocolMessage received_message_buffer[128];
+static ProtocolMessage received_message_buffer[64];
 
 static inline bool has_received_message(ProtocolMessage *message) {
     if (received_message == 0) {
@@ -123,9 +123,6 @@ static inline bool add_received_message(ProtocolMessage *message) {
 
     return true;
 }
-
-
-
 
 static inline bool send_message_to_master(ProtocolMessage *message) {
     if (buffered_message > 128) {
@@ -194,7 +191,7 @@ static inline bool request_from_slave(ProtocolMessage *message, uint8_t address)
 
 static inline bool setup_communication_master() {
     Wire.begin();
-    Wire.setClock(400000);
+    //Wire.setClock(400000);
 
 
     return true;
@@ -228,3 +225,4 @@ static inline bool setup_communication_slave(int sda, int scl, uint8_t address) 
     });
     return true;
 }
+
