@@ -2,6 +2,13 @@
 
 #include <pulsar/callback.hpp>
 #include <pulsar/protocol.hpp>
+#if defined(ESP32)
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#endif
+
+
 
 void setup(){
   Serial.begin(115200);
