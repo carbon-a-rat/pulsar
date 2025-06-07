@@ -11,6 +11,9 @@
         "url": ""
       }
     ],
+    "dependencies": [
+
+    ],
     "license": "GPL",
     "frameworks": "*",
     "platforms": "*"

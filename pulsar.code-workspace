@@ -73,7 +73,13 @@
 			"limits": "cpp",
 			"ostream": "cpp",
 			"ranges": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"unordered_set": "cpp",
+			"netfwd": "cpp",
+			"fstream": "cpp",
+			"iomanip": "cpp",
+			"istream": "cpp",
+			"sstream": "cpp"
 		}
 	}
 }
