@@ -50,9 +50,17 @@ struct SubscriptionCtx
     String endpoint;
     String collection;
     String recordid;
+    String connection_id;
 
     SubscriptionCtx()
         : active(false), callback(nullptr), ctx(nullptr), tcp_connection(), endpoint(""), collection(""), recordid("") {}
+};
+
+struct SubscriptionEvent {
+    bool valid;
+    String event; 
+    String data; 
+    String id;
 };
 
 class PocketbaseArduino
@@ -62,7 +70,7 @@ class PocketbaseArduino
 
     PocketbaseConnection main_connection;
 
-
+    SubscriptionEvent query_subscription_response(SubscriptionCtx* sub);
 
 public:
     PocketbaseArduino(const char *baseUrl); // Constructor

@@ -61,5 +61,6 @@ void setup(){
 }
 
 void loop() {
+ // Serial.println("Updating subscription...");
   pb.update_subscription();
 }

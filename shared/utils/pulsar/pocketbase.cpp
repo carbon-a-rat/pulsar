@@ -208,7 +208,7 @@ void PocketbaseArduino::subscribe(
     auto &current = subscription_ctx[selected_index];
     subscription_count++;
 
-    String url = base_url + "/realtime";
+    String url = base_url + "realtime";
 
     auto https = current.tcp_connection;
 
@@ -217,8 +217,8 @@ void PocketbaseArduino::subscribe(
         https->addHeader("Accept", "text/event-stream");
         https->addHeader("Authorization", current.pb_connection.auth_token);
         https->setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-        // https->setReuse(true);
-        // https->setTimeout(10000); // Set a timeout for the connection
+  //       https->setReuse(true);
+  //       https->setTimeout(10000); // Set a timeout for the connection
         int code = https->GET();
         if (code > 0)
         {
@@ -229,6 +229,18 @@ void PocketbaseArduino::subscribe(
                 //  current.pb_connection.client->setTimeout(10000); // Set a timeout for the client
                 current.pb_connection.client->setNoDelay(true); // Disable Nagle's algorithm for better performance
                 current.endpoint = url;
+
+                auto event = query_subscription_response(&current); // Read the initial response from the server
+                if (event.event != "PB_CONNECT")
+                {
+                    Serial.println("[ERROR] Unexpected event received: " + event.event);
+                    return;
+                }
+
+                Serial.println("[Supscrption] Subscription event id: " + event.id);
+
+                current.connection_id = event.id;
+
                 // String payload = https->getString();
                 // print request contents (must be removed)
                 //  Serial.println(payload);
@@ -253,13 +265,109 @@ void PocketbaseArduino::subscribe(
 
     Serial.println("Subscription established for collection: " + String(collection) + ", recordid: " + String(recordid));
 
-    // QNetworkRequest subscriptionRequest = QNetworkRequest(QUrl(url + "/api/realtime"));
-    /// subscriptionRequest.setRawHeader("accept", "text/event-stream");
-    // subscriptionRequest.setRawHeader("Authorization", token.toUtf8());
-    // subscriptionRequest.setAttribute(QNetworkRequest::RedirectionTargetAttribute, true);
-    // subscriptionRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    // now configure the subscription request
+
+    // do a post request to the subscription endpoint
+    HTTPClient *https_post = new HTTPClient();
+
+
+    if (!https_post->begin(*this->main_connection.client, base_url + "realtime"))
+    {
+        Serial.println("[HTTPS] Unable to connect for subscription POST");
+        delete https_post; // Clean up the HTTPClient if it fails to connect
+        return;
+    }
+    Serial.println("[HTTPS] Subscribing to collection: " + String(collection) + ", recordid: " + String(recordid));
+    https_post->addHeader("Content-Type", "application/json");
+    https_post->addHeader("Authorization", current.pb_connection.auth_token.c_str());
+    https_post->setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+
+    // Create the JSON payload for the subscription
+    DynamicJsonDocument doc(1024);
+    doc["clientId"] = current.connection_id; // Use the connection ID from the initial response
+    doc["subscriptions"] = JsonArray();
+    doc["subscriptions"].add(current.collection + "/" + current.recordid);
+
+    String payload;
+    serializeJson(doc, payload);
+
+    Serial.println("[HTTPS] Subscription payload: " + payload);
+    int code = https_post->POST(payload);
+    if (code > 0)
+    {
+        Serial.printf("[HTTPS] Subscription POST... code: %d\n", code);
+        if (code == HTTP_CODE_OK || code == HTTP_CODE_NO_CONTENT)
+        {
+            Serial.println("[HTTPS] Subscription established successfully.");
+        }
+        else
+        {
+            Serial.printf("[HTTPS] Error on subscription: %s\n", https->errorToString(code).c_str());
+        }
+    }
+    else
+    {
+        Serial.printf("[HTTPS] Unable to subscribe: %s\n", https->errorToString(code).c_str());
+    }
+
+    // send the subscription request
+//    current.tcp_connection->getStream().write_P(payload.c_str(), payload.length());
+    https_post->end(); // End the HTTPS connection for the subscription request
+    delete https_post; // Clean up the HTTPClient after use
+
+    Serial.println("Subscription request sent for collection: " + String(collection) + ", recordid: " + String(recordid));
 }
 
+SubscriptionEvent PocketbaseArduino::query_subscription_response(SubscriptionCtx *sub)
+{
+    SubscriptionEvent event;
+
+    auto stream = sub->tcp_connection->getStreamPtr();
+    String line;
+    // FIXME: extract this in another function
+    while (stream->available())
+    {
+
+        char c = stream->read();
+
+        if (c == '\n')
+        {
+            if (!line.isEmpty())
+            {
+                // Process the line
+                //  Serial.println("Processing line: " + line);
+                if (line.startsWith("data:"))
+                {
+                    event.data += line.substring(5); // Skip "data:"
+                }
+                else if (line.startsWith("event:"))
+                {
+                    event.event = line.substring(6); // Skip "event:"
+                }
+                else if (line.startsWith("id:"))
+                {
+                    event.id = line.substring(3);
+                }
+                else
+                {
+                    Serial.println("Unknown line format: " + line);
+                }
+            }
+            line = ""; // Reset for the next line
+        }
+        else if (c != '\r')
+        {
+            line += c; // Append character to the current line
+        }
+    }
+
+    if (event.data.isEmpty() || event.event.isEmpty())
+    {
+        Serial.println("No valid data or event found in the response.");
+        return {};
+    }
+    return event;
+}
 void PocketbaseArduino::update_subscription()
 {
     for (size_t i = 0; i < sizeof(subscription_ctx) / sizeof(subscription_ctx[0]); i++)
@@ -293,57 +401,20 @@ void PocketbaseArduino::update_subscription()
             {
                 continue;
             }
-          //  String response = current.pb_connection.client->readStringUntil('\n');
-         //   Serial.println("Received response: " + response);
+
+            auto event = query_subscription_response(&current);
+            if (event.event.isEmpty())
+            {
+                Serial.println("No event received for collection: " + current.collection + ", recordid: " + current.recordid);
+                continue;
+            }
+
+            Serial.println("Received event: " + event.event + ", data: " + event.data + ", id: " + event.id);
+            
+            //  String response = current.pb_connection.client->readStringUntil('\n');
+            //   Serial.println("Received response: " + response);
 
             // Parse the JSON response
-
-            String data;
-            String event; 
-
-            String line;
-            // FIXME: extract this in another function
-            while(stream->available())
-            {
-                
-                char c = stream->read();
-                
-                if (c == '\n')
-                {
-                    if (!line.isEmpty())
-                    {
-                        // Process the line
-                        Serial.println("Processing line: " + line);
-                        if (line.startsWith("data:"))
-                        {
-                            data += line.substring(5); // Skip "data:"
-                        }
-                        else if (line.startsWith("event:"))
-                        {
-                            event = line.substring(6); // Skip "event:"
-                        }
-                        else 
-                        {
-                            Serial.println("Unknown line format: " + line);
-                        }
-                    }
-                    line = ""; // Reset for the next line
-                }
-                else if(c != '\r')
-                {
-                    line += c; // Append character to the current line
-                }
-            }
-            
-
-            if(data.isEmpty() || event.isEmpty())
-            {
-                Serial.println("No valid data or event found in the response.");
-                continue; // Skip processing if no valid data or event
-            }
-                // Call the callback function with the event and record
-            current.callback(event, data, current.ctx);
-            
         }
     }
 }
