@@ -10,7 +10,6 @@
 
 #include <ArduinoJson.h>
 
-
 #if defined(ESP8266)
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
@@ -19,155 +18,6 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #endif
-
-
-int post_func(HTTPClient& client, const String& payload)
-{
-    //client.addHeader("Content-Type", "application/json");
-    int httpCode = client.POST(payload);
-    if (httpCode > 0)
-    {
-        Serial.println("response code: " + String(httpCode));
-        Serial.println("Response from server:");
-       
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED)
-        {
-            return httpCode; // Success
-        }
-        else if(httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-        {
-            String newLocation = client.header("Location");
-            Serial.printf("Redirected to: %s\n", newLocation.c_str());
-            // Optionally, you can follow the redirect
-            client.begin(newLocation);
-            httpCode = client.GET();
-            if (httpCode > 0)
-            {
-                return httpCode; // Assuming the redirect is successful
-            }
-            else
-            {
-                Serial.printf("Redirect failed: %s\n", client.errorToString(httpCode).c_str());
-            }
-        }
-        else
-        {
-            Serial.printf("HTTP error: %d\n", httpCode);
-        }
-    }
-    else
-    {
-        Serial.printf("HTTP request failed: %s\n", client.errorToString(httpCode).c_str());
-    }
-
-    return httpCode;
-}
-
-int get_func(HTTPClient& client)
-{
-
-    // print raw header 
-     
-    
-    int httpCode = client.GET();
-    if (httpCode > 0)
-    {
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-        {
-            return httpCode; // Success
-        }
-        else
-        {
-            Serial.printf("HTTP error: %d\n", httpCode);
-        }
-    }
-    else
-    {
-        Serial.printf("HTTP request failed: %s\n", client.errorToString(httpCode).c_str());
-    }
-
-    return httpCode;
-}
-
-bool PocketbaseArduino::login_passwd(const char *username, const char *password)
-{
-    String endpoint = base_url + "collections/users/auth-with-password";
-   // std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure);
-    //client->setInsecure();
-    
-    HTTPClient http;
-    
-    http.begin(*client, endpoint);
-
-    http.addHeader("Content-Type", "application/json");
-
-    String payload = "{\"identity\":\"" + String(username) + "\",\"password\":\"" + String(password) + "\"}";
-        
-    int httpCode = post_func(http, payload);
-
-    if (httpCode > 0)
-    {
-        String response = http.getString();
-        Serial.println("Response from server:");
-        Serial.println("Endpoint: " + endpoint);
-        Serial.println(response);
-        Serial.println("HTTP Code: " + String(httpCode));
-        if (httpCode == HTTP_CODE_OK)
-        {
-            // Parse the response to extract auth_user and auth_token
-            // Assuming the response is in JSON format
-
-            Serial.println("Login successful, parsing response...");
-            DynamicJsonDocument doc(1024);
-            Serial.println("Parsing JSON response...");
-            DeserializationError error = deserializeJson(doc, response);
-            Serial.println("Deserialization complete.");
-            if (!error)
-            {
-                auth_token = doc["token"].as<String>();
-                Serial.printf("Login successful. User: %s, Token: %s\n", username, auth_token.c_str());
-                http.end();
-                return true;
-            }
-            else
-            {
-                Serial.printf("JSON parse error: %s\n", error.c_str());
-            }
-        }
-        else if (httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-        {
-            String newLocation = http.header("Location");
-            Serial.printf("Redirected to: %s\n", newLocation.c_str());
-            // Optionally, you can follow the redirect
-            http.begin(*client, newLocation);
-            httpCode = http.GET();
-            if (httpCode > 0)
-            {
-                response = http.getString();
-                Serial.println(response);
-                http.end();
-                return true; // Assuming the redirect is successful
-            }
-            else
-            {
-                Serial.printf("Redirect failed: %s\n", http.errorToString(httpCode).c_str());
-            }
-        }
-        
-    
-        else
-        {
-            Serial.printf("HTTP error: %d\n", httpCode);
-        }
-        http.end();
-    }
-    else
-    {
-        Serial.printf("HTTP request failed: %s\n", http.errorToString(httpCode).c_str());
-    }
-    return false; // Return false if login fails
-}
-
 
 PocketbaseArduino::PocketbaseArduino(const char *baseUrl)
 {
@@ -183,227 +33,31 @@ PocketbaseArduino::PocketbaseArduino(const char *baseUrl)
     current_endpoint = base_url;
     expand_param = "";
     fields_param = "";
-    client = (new WiFiClientSecure);
-    client->setInsecure();
-    
+
+    // Initialize the main connection
+    main_connection.base_url = base_url;
+    main_connection.auth_token = "";
+    // Initialize the client
+
+    main_connection.client = new WiFiClientSecure;
+    main_connection.client->setInsecure();
+
+    for (size_t i = 0; i < sizeof(subscription_ctx) / sizeof(subscription_ctx[0]); i++)
+    {
+        subscription_ctx[i].active = false;
+        subscription_ctx[i].callback = nullptr;
+        subscription_ctx[i].ctx = nullptr;
+        subscription_ctx[i].tcp_connection = nullptr;
+        subscription_ctx[i].endpoint = "";
+        subscription_ctx[i].collection = "";
+        subscription_ctx[i].recordid = "";
+    }
 }
 
 PocketbaseArduino &PocketbaseArduino::collection(const char *collection)
 {
     current_endpoint = "collections/" + String(collection) + "/";
     return *this;
-}
-
-String PocketbaseArduino::performGETRequest(const char *endpoint)
-{
-#if defined(ESP32)
-    if (strncmp(endpoint, "https", 5) == 0)
-    {
-     //   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure);
-//    client->setInsecure();
-        HTTPClient https;
-        Serial.println("token: " + auth_token);
-
-
-        Serial.print("[HTTPS] Full URL: ");
-        Serial.println(endpoint);
-
-        if (https.begin(*client, endpoint))
-        {
-            https.addHeader("Authorization",auth_token.c_str());
-
-            Serial.print("[HTTPS] GET...\n");
-            int httpCode = get_func(https);
-            if (httpCode > 0)
-            {
-                Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-                // if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-                if (httpCode)
-                {
-                    String payload = https.getString();
-                    // print request contents (must be removed)
-                    Serial.println(payload);
-                    https.end();
-                    return payload;
-                }
-            }
-            else
-            {
-                Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
-            }
-            https.end();
-        }
-        else
-        {
-            Serial.printf("[HTTPS] Unable to connect\n");
-        }
-        // TODO: improve return value in case failure happens
-        return ""; // Return an empty string on failure
-    }
-    else
-    {
-        Serial.print("[HTTP] Full URL: ");
-        Serial.println(endpoint);
-
-        HTTPClient http;
-        Serial.print("[HTTP] begin...\n");
-      
-        if (http.begin(endpoint))
-        {
-            http.addHeader("Authorization",auth_token.c_str());
-          //  http.setAuthorization(auth_token.c_str());
-
-            Serial.print("[HTTP] GET...\n");
-            int httpCode = http.GET();
-            if (httpCode > 0)
-            {
-                Serial.printf("[HTTP] GET... code: %d\n", httpCode);
-                // if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-                if (httpCode)
-                {
-                    String payload = http.getString();
-                    Serial.println(payload);
-                    http.end();
-                    return payload;
-                }
-            }
-            else
-            {
-                Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-            }
-            http.end();
-        }
-        else
-        {
-            Serial.printf("[HTTP] Unable to connect\n");
-        }
-        // TODO: improve return value in case failure happens
-        return ""; // Return an empty string on failure
-    }
-#endif
-}
-
-String PocketbaseArduino::performDELETERequest(const char *endpoint)
-{
-#if defined(ESP32)
-
-    if (strncmp(endpoint, "https", 5) == 0)
-    {
-      //  std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure);
-      //  client->setInsecure();
-        HTTPClient https;
-
-        Serial.print("[HTTPS] Full URL: ");
-        Serial.println(endpoint);
-
-        if (https.begin(*client, endpoint))
-        {
-            Serial.print("[HTTPS] DELETE...\n");
-            int httpCode = https.sendRequest("DELETE");
-            if (httpCode > 0)
-            {
-                Serial.printf("[HTTPS] DELETE... code: %d\n", httpCode);
-                // if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-                if (httpCode)
-                {
-                    String payload = https.getString();
-                    // print request contents (must be removed)
-                    Serial.println(payload);
-                    https.end();
-                    return payload;
-                }
-            }
-            else
-            {
-                Serial.printf("[HTTPS] DELETE... failed, error: %s\n", https.errorToString(httpCode).c_str());
-            }
-            https.end();
-        }
-        else
-        {
-            Serial.printf("[HTTPS] Unable to connect\n");
-        }
-        // TODO: improve return value in case failure happens
-        return ""; // Return an empty string on failure
-    }
-    else
-    {
-        Serial.print("[HTTP] Full URL: ");
-        Serial.println(endpoint);
-
-        HTTPClient http;
-        Serial.print("[HTTP] begin...\n");
-        if (http.begin(endpoint))
-        {
-            Serial.print("[HTTP] DELETE...\n");
-            int httpCode = http.sendRequest("DELETE");
-            if (httpCode > 0)
-            {
-                Serial.printf("[HTTP] DELETE... code: %d\n", httpCode);
-                // if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-                if (httpCode)
-                {
-                    String payload = http.getString();
-                    Serial.println(payload);
-                    http.end();
-                    return payload;
-                }
-            }
-            else
-            {
-                Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-            }
-            http.end();
-        }
-        else
-        {
-            Serial.printf("[HTTP] Unable to connect\n");
-        }
-        // TODO: improve return value in case failure happens
-        return ""; // Return an empty string on failure
-    }
-#endif
-}
-
-String PocketbaseArduino::performPOSTRequest(const char *endpoint, const String &requestBody)
-{
-#if defined(ESP32)
-    HTTPClient http;
-
-    Serial.print("[HTTPS] Full URL: ");
-    Serial.println(endpoint);
-
-    if (http.begin(*client, endpoint))
-    {
-        Serial.print("[HTTPS] POST...\n");
-
-        int httpCode = post_func(http, requestBody);
-        if (httpCode > 0)
-        {
-            Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-            if (httpCode)
-            {
-                String payload = http.getString();
-                Serial.println(payload);
-                http.end();
-                return payload;
-            }
-        }
-        else
-        {
-            Serial.printf("[HTTPS] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-
-        http.end();
-    }
-    else
-    {
-        Serial.printf("[HTTPS] Unable to connect\n");
-    }
-
-    // TODO: improve return value in case of failure
-    return ""; // Return an empty string on failure
-#endif
 }
 
 String PocketbaseArduino::getOne(const char *recordId, const char *expand /* = nullptr */, const char *fields /* = nullptr */)
@@ -424,7 +78,7 @@ String PocketbaseArduino::getOne(const char *recordId, const char *expand /* = n
         fullEndpoint += "fields=" + String(fields);
     }
 
-    return performGETRequest(fullEndpoint.c_str());
+    return main_connection.performGETRequest(fullEndpoint.c_str());
 }
 
 String PocketbaseArduino::getList(
@@ -493,14 +147,14 @@ String PocketbaseArduino::getList(
         fullEndpoint += "skipTotal=" + String(filter);
     }
 
-    return performGETRequest(fullEndpoint.c_str());
+    return main_connection.performGETRequest(fullEndpoint.c_str());
 }
 
 String PocketbaseArduino::deleteRecord(const char *recordId)
 {
     String fullEndpoint = base_url + String(current_endpoint) + "records/" + recordId;
 
-    return performDELETERequest(fullEndpoint.c_str());
+    return main_connection.performDELETERequest(fullEndpoint.c_str());
 }
 
 String PocketbaseArduino::create(const String &requestBody)
@@ -509,5 +163,211 @@ String PocketbaseArduino::create(const String &requestBody)
     String fullEndpoint = current_endpoint + "records/";
 
     // Call performPOSTRequest with the constructed endpoint and provided parameters
-    return performPOSTRequest(fullEndpoint.c_str(), requestBody);
+    return main_connection.performPOSTRequest(fullEndpoint.c_str(), requestBody);
+}
+
+void PocketbaseArduino::subscribe(
+    const char *collection,
+    const char *recordid,
+    SubscriptionFn callback,
+    void *ctx)
+{
+    if (subscription_count >= 5)
+    {
+        Serial.println("Maximum subscription count reached.");
+        return;
+    }
+
+    int selected_index = -1;
+    for (size_t i = 0; i < sizeof(subscription_ctx) / sizeof(subscription_ctx[0]); i++)
+    {
+        if (subscription_ctx[i].active == false)
+        {
+            selected_index = i;
+            break;
+        }
+    }
+
+    if (selected_index == -1)
+    {
+        Serial.println("No available subscription slot found.");
+        return;
+    }
+
+    Serial.println("Subscribing to collection: " + String(collection) + ", recordid: " + String(recordid));
+
+    subscription_ctx[selected_index].pb_connection = main_connection.fork();
+
+    subscription_ctx[selected_index].collection = String(collection);
+    subscription_ctx[selected_index].recordid = String(recordid);
+    subscription_ctx[selected_index].callback = callback;
+    subscription_ctx[selected_index].ctx = ctx;
+    subscription_ctx[selected_index].active = true;
+    subscription_ctx[selected_index].tcp_connection = new HTTPClient(); // Initialize the HTTPClient for this subscription
+
+    auto &current = subscription_ctx[selected_index];
+    subscription_count++;
+
+    String url = base_url + "/realtime";
+
+    auto https = current.tcp_connection;
+
+    if (https->begin(*current.pb_connection.client, url))
+    {
+        https->addHeader("Accept", "text/event-stream");
+        https->addHeader("Authorization", current.pb_connection.auth_token);
+        https->setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+        // https->setReuse(true);
+        // https->setTimeout(10000); // Set a timeout for the connection
+        int code = https->GET();
+        if (code > 0)
+        {
+            Serial.printf("[HTTPS] GET... code: %d\n", code);
+            if (code == HTTP_CODE_OK || code == HTTP_CODE_NO_CONTENT)
+            {
+                Serial.println("[HTTPS] Connection established successfully.");
+                //  current.pb_connection.client->setTimeout(10000); // Set a timeout for the client
+                current.pb_connection.client->setNoDelay(true); // Disable Nagle's algorithm for better performance
+                current.endpoint = url;
+                // String payload = https->getString();
+                // print request contents (must be removed)
+                //  Serial.println(payload);
+            }
+            else
+            {
+                Serial.printf("[HTTPS] Error on connection: %s\n", https->errorToString(code).c_str());
+            }
+        }
+        else
+        {
+            Serial.printf("[HTTPS] Unable to connect: %s\n", https->errorToString(code).c_str());
+        }
+        // https.end(); // End the HTTPS connection
+        //  current.pb_connection.client->flush(); // Ensure the client is ready for reading
+        // current.tcp_connection = std::move(https); // Store the HTTPClient in the subscription context
+    }
+    else
+    {
+        Serial.printf("[HTTPS] Unable to connect\n");
+    }
+
+    Serial.println("Subscription established for collection: " + String(collection) + ", recordid: " + String(recordid));
+
+    // QNetworkRequest subscriptionRequest = QNetworkRequest(QUrl(url + "/api/realtime"));
+    /// subscriptionRequest.setRawHeader("accept", "text/event-stream");
+    // subscriptionRequest.setRawHeader("Authorization", token.toUtf8());
+    // subscriptionRequest.setAttribute(QNetworkRequest::RedirectionTargetAttribute, true);
+    // subscriptionRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+}
+
+void PocketbaseArduino::update_subscription()
+{
+    for (size_t i = 0; i < sizeof(subscription_ctx) / sizeof(subscription_ctx[0]); i++)
+    {
+        if (subscription_ctx[i].active)
+        {
+            if (subscription_ctx[i].pb_connection.client == nullptr)
+            {
+                Serial.println("Subscription client is null, skipping update for collection: " + subscription_ctx[i].collection + ", recordid: " + subscription_ctx[i].recordid);
+                continue;
+            }
+
+            auto &current = subscription_ctx[i];
+            auto stream = current.tcp_connection->getStreamPtr();
+
+            if (!stream->connected())
+            {
+                Serial.println("Subscription client is not connected, attempting to reconnect for collection: " + current.collection + ", recordid: " + current.recordid);
+                current.tcp_connection->begin(*current.pb_connection.client, current.endpoint);
+                current.tcp_connection->addHeader("Accept", "text/event-stream");
+                current.tcp_connection->addHeader("Authorization", current.pb_connection.auth_token);
+                current.tcp_connection->setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+                int code = current.tcp_connection->GET();
+                if (code <= 0)
+                {
+                    Serial.printf("[HTTPS] Unable to reconnect: %s\n", current.tcp_connection->errorToString(code).c_str());
+                    continue;
+                }
+            }
+            if (!stream->available())
+            {
+                continue;
+            }
+          //  String response = current.pb_connection.client->readStringUntil('\n');
+         //   Serial.println("Received response: " + response);
+
+            // Parse the JSON response
+
+            String data;
+            String event; 
+
+            String line;
+            // FIXME: extract this in another function
+            while(stream->available())
+            {
+                
+                char c = stream->read();
+                
+                if (c == '\n')
+                {
+                    if (!line.isEmpty())
+                    {
+                        // Process the line
+                        Serial.println("Processing line: " + line);
+                        if (line.startsWith("data:"))
+                        {
+                            data += line.substring(5); // Skip "data:"
+                        }
+                        else if (line.startsWith("event:"))
+                        {
+                            event = line.substring(6); // Skip "event:"
+                        }
+                        else 
+                        {
+                            Serial.println("Unknown line format: " + line);
+                        }
+                    }
+                    line = ""; // Reset for the next line
+                }
+                else if(c != '\r')
+                {
+                    line += c; // Append character to the current line
+                }
+            }
+            
+
+            if(data.isEmpty() || event.isEmpty())
+            {
+                Serial.println("No valid data or event found in the response.");
+                continue; // Skip processing if no valid data or event
+            }
+                // Call the callback function with the event and record
+            current.callback(event, data, current.ctx);
+            
+        }
+    }
+}
+
+void PocketbaseArduino::unsubscribe(
+    const char *collection,
+    const char *recordid)
+{
+    for (size_t i = 0; i < sizeof(subscription_ctx) / sizeof(subscription_ctx[0]); i++)
+    {
+        if (subscription_ctx[i].active &&
+            subscription_ctx[i].collection == String(collection) &&
+            subscription_ctx[i].recordid == String(recordid))
+        {
+            Serial.println("Unsubscribing from collection: " + String(collection) + ", recordid: " + String(recordid));
+            subscription_ctx[i].active = false;
+            subscription_ctx[i].pb_connection.client->stop(); // Stop the client connection
+            delete subscription_ctx[i].pb_connection.client;  // Delete the client to free resources
+            delete subscription_ctx[i].tcp_connection;        // Delete the HTTPClient to free resources
+            subscription_count--;
+
+            return;
+        }
+    }
+
+    Serial.println("No active subscription found for collection: " + String(collection) + ", recordid: " + String(recordid));
 }

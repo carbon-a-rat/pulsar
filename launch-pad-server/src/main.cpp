@@ -11,6 +11,9 @@
 #include <pulsar/config.hpp>
 
 #include <pulsar/pocketbase.hpp>
+
+PocketbaseArduino pb("https://deathstar.cyp.sh/");
+
 void setup(){
   Serial.begin(9600);
   // list available wifi 
@@ -42,8 +45,6 @@ void setup(){
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  PocketbaseArduino pb("https://deathstar.cyp.sh/");
-
   pb.login_passwd(USER_NAME, USER_PASSWORD);
 
 
@@ -51,7 +52,14 @@ void setup(){
 
   Serial.println("Result: ");
   Serial.println(result);
+
+
+  pb.subscribe("manufacturers", "*", [](String event, String record, void *ctx) {
+    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
+  });
+  Serial.println("finished loading.");
 }
 
 void loop() {
+  pb.update_subscription();
 }

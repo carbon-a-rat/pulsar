@@ -1,5 +1,4 @@
-#pragma once 
-
+#pragma once
 
 // printf format
 #define DEBUG_HTTPCLIENT Serial.printf
@@ -16,24 +15,77 @@
 #endif
 
 #include <Arduino.h>
-class PocketbaseArduino
-{
-    String auth_user;
 
+typedef void (*SubscriptionFn)(String event, String record, void *ctx);
+
+struct PocketbaseConnection
+{
+    String base_url;
     String auth_token;
     WiFiClientSecure *client = nullptr;
+
     String performGETRequest(const char *endpoint);
     String performDELETERequest(const char *endpoint);
     String performPOSTRequest(const char *endpoint, const String &requestBody);
+    bool login_passwd(const char *username, const char *password);
+
+    PocketbaseConnection fork()
+    {
+        PocketbaseConnection new_connection;
+        new_connection.base_url = base_url;
+        new_connection.auth_token = auth_token; // a pocketbase connection can share the same auth token
+        new_connection.client = new WiFiClientSecure();
+        new_connection.client->setInsecure(); // Ensure the forked client is insecure
+        return new_connection;
+    }
+};
+
+struct SubscriptionCtx
+{
+    bool active = false;
+    SubscriptionFn callback;
+    void *ctx;
+    PocketbaseConnection pb_connection; // Pointer to the client for this subscription
+    HTTPClient* tcp_connection;
+    String endpoint;
+    String collection;
+    String recordid;
+
+    SubscriptionCtx()
+        : active(false), callback(nullptr), ctx(nullptr), tcp_connection(), endpoint(""), collection(""), recordid("") {}
+};
+
+class PocketbaseArduino
+{
+    size_t subscription_count = 0;
+    SubscriptionCtx subscription_ctx[5];
+
+    PocketbaseConnection main_connection;
+
+
+
 public:
     PocketbaseArduino(const char *baseUrl); // Constructor
 
     // Methods to build collection and record URLs
     PocketbaseArduino &collection(const char *collection);
 
+    void subscribe(
+        const char *collection,
+        const char *recordid,
+        SubscriptionFn callback,
+        void *ctx = nullptr);
 
-    bool login_passwd(const char *username, const char *password);
+    void unsubscribe(
+        const char *collection,
+        const char *recordid);
 
+    void update_subscription();
+
+    bool login_passwd(const char *username, const char *password)
+    {
+        return main_connection.login_passwd(username, password);
+    }
 
     /**
      * @brief           Fetches a single record from a Pocketbase collection
@@ -99,13 +151,13 @@ public:
      *                  For more information, see: https://pocketbase.io/docs
      */
     String getList(
-        const char *page  = nullptr ,
-        const char *perPage  = nullptr ,
-        const char *sort  = nullptr ,
-        const char *filter  = nullptr,
-        const char *skipTotal  = nullptr ,
-        const char *expand  = nullptr ,
-        const char *fields  = nullptr);
+        const char *page = nullptr,
+        const char *perPage = nullptr,
+        const char *sort = nullptr,
+        const char *filter = nullptr,
+        const char *skipTotal = nullptr,
+        const char *expand = nullptr,
+        const char *fields = nullptr);
 
     String create(const String &requestBody);
 
@@ -115,4 +167,3 @@ private:
     String expand_param;
     String fields_param;
 };
-
