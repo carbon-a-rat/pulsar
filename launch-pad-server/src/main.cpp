@@ -44,12 +44,40 @@ void setup(){
   Serial.println("\nConnected to WiFi");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  Serial.println("Public IP: ");
+  HTTPClient http;
+  http.begin("http://api.ipify.org");
+  int httpCode = http.GET();
+  if (httpCode > 0) {
+    String payload = http.getString();
+    Serial.println(payload);
+  } else {
+    Serial.printf("Error getting public IP: %s\n", http.errorToString(httpCode).c_str());
+  }
+  http.end();
+
+  // Test connectivity to Pocketbase server
+  Serial.println("Testing connectivity to Pocketbase server...");
+  HTTPClient pbTest;
+  WiFiClientSecure client;
+  client.setInsecure();
+  pbTest.begin(client, "https://deathstar.cyp.sh/api/health");
+  pbTest.setTimeout(10000);
+  int pbHttpCode = pbTest.GET();
+  Serial.printf("Pocketbase health check response: %d\n", pbHttpCode);
+  if (pbHttpCode > 0) {
+    String pbResponse = pbTest.getString();
+    Serial.println("Pocketbase response: " + pbResponse);
+  } else {
+    Serial.printf("Error connecting to Pocketbase: %s\n", pbTest.errorToString(pbHttpCode).c_str());
+  }
+  pbTest.end();
 
   pb.login_passwd(USER_NAME, USER_PASSWORD, "launchers");
 
 
   String request = 
-    String("(should_load='true'&&loaded_at=\"\"&&launcher='") + pb.getConnectionRecord()["record"]["id"].as<String>() + "')";
+    String("(should_load=\"true\"&&loaded_at=\"\"&&launcher=\"") + pb.getConnectionRecord()["record"]["id"].as<String>() + "\")";
   String result = pb.collection("launches").getList(
     "1", // page
     "20", // perPage

@@ -23,6 +23,15 @@
 
 typedef void (*SubscriptionFn)(String event, String record, void *ctx);
 
+
+static inline void encode_url_filter(String& raw_url)
+{
+    raw_url.replace("&", "%26");
+    raw_url.replace("?", "%3F");
+    raw_url.replace("=", "%3D");
+    raw_url.replace("\"", "%22");
+}
+
 struct PocketbaseConnection
 {
     String base_url;

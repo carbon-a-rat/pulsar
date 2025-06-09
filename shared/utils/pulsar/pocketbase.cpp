@@ -143,9 +143,11 @@ String PocketbaseArduino::getList(
     // Append the filter parameter if provided
     if (filter != nullptr && strlen(filter) > 0)
     {
+        String filter_str = filter;
+        encode_url_filter(filter_str);
         // Check if there's already a query string
         fullEndpoint += (fullEndpoint.indexOf('?') == -1) ? "?" : "&";
-        fullEndpoint += "filter=" + String(filter);
+        fullEndpoint += "filter=" + filter_str;
     }
 
     return main_connection.performGETRequest(fullEndpoint.c_str());
@@ -305,6 +307,10 @@ void PocketbaseArduino::subscribe(
         {
             Serial.printf("[HTTPS] Error on subscription: %s\n", https->errorToString(code).c_str());
         }
+    }
+    else if(code == -1)
+    {
+
     }
     else
     {

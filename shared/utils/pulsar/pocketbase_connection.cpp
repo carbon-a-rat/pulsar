@@ -80,7 +80,7 @@ int get_func(HTTPClient &client)
     return httpCode;
 }
 
-DynamicJsonDocument PocketbaseConnection::login_passwd(const char *username, const char *password, const char* collection)
+DynamicJsonDocument PocketbaseConnection::login_passwd(const char *username, const char *password, const char *collection)
 {
 
     String endpoint = base_url + "collections/" + String(collection) + "/auth-with-password";
@@ -94,7 +94,7 @@ DynamicJsonDocument PocketbaseConnection::login_passwd(const char *username, con
     http.addHeader("Content-Type", "application/json");
 
     String payload = "{\"identity\":\"" + String(username) + "\",\"password\":\"" + String(password) + "\"}";
-
+    http.setTimeout(10000); // Set timeout to 10 seconds
     int httpCode = post_func(http, payload);
 
     if (httpCode > 0)
@@ -149,11 +149,12 @@ String PocketbaseConnection::performGETRequest(const char *endpoint)
         //   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure);
         //    client->setInsecure();
         HTTPClient https;
-        Serial.println("token: " + auth_token);
+        https.setTimeout(10000); // Set timeout to 10 seconds
+      //  Serial.println("token: " + auth_token);
 
         Serial.print("[HTTPS] Full URL: ");
         Serial.println(endpoint);
-
+       
         if (https.begin(*client, endpoint))
         {
             https.addHeader("Authorization", auth_token.c_str());
