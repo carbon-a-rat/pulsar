@@ -20,6 +20,7 @@
 #endif
 
 PocketbaseArduino::PocketbaseArduino(const char *baseUrl)
+    : connection_record(0)
 {
     base_url = baseUrl;
 
@@ -144,7 +145,7 @@ String PocketbaseArduino::getList(
     {
         // Check if there's already a query string
         fullEndpoint += (fullEndpoint.indexOf('?') == -1) ? "?" : "&";
-        fullEndpoint += "skipTotal=" + String(filter);
+        fullEndpoint += "filter=" + String(filter);
     }
 
     return main_connection.performGETRequest(fullEndpoint.c_str());
