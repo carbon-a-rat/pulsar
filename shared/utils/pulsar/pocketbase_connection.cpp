@@ -80,10 +80,10 @@ int get_func(HTTPClient &client)
     return httpCode;
 }
 
-bool PocketbaseConnection::login_passwd(const char *username, const char *password)
+DynamicJsonDocument PocketbaseConnection::login_passwd(const char *username, const char *password, const char* collection)
 {
 
-    String endpoint = base_url + "collections/users/auth-with-password";
+    String endpoint = base_url + "collections/" + String(collection) + "/auth-with-password";
     // std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure);
     // client->setInsecure();
 
@@ -120,7 +120,7 @@ bool PocketbaseConnection::login_passwd(const char *username, const char *passwo
                 auth_token = doc["token"].as<String>();
                 Serial.printf("Login successful. User: %s, Token: %s\n", username, auth_token.c_str());
                 http.end();
-                return true;
+                return doc;
             }
             else
             {
@@ -138,7 +138,7 @@ bool PocketbaseConnection::login_passwd(const char *username, const char *passwo
     {
         Serial.printf("HTTP request failed: %s\n", http.errorToString(httpCode).c_str());
     }
-    return false; // Return false if login fails
+    return DynamicJsonDocument(0); // Return false if login fails
 }
 
 String PocketbaseConnection::performGETRequest(const char *endpoint)

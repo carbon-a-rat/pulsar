@@ -5,6 +5,11 @@
 
 // PocketbaseExtended.h
 
+
+#include <json_parser.h>
+
+#include <ArduinoJson.h>
+
 #if defined(ESP8266)
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
@@ -27,7 +32,7 @@ struct PocketbaseConnection
     String performGETRequest(const char *endpoint);
     String performDELETERequest(const char *endpoint);
     String performPOSTRequest(const char *endpoint, const String &requestBody);
-    bool login_passwd(const char *username, const char *password);
+    DynamicJsonDocument login_passwd(const char *username, const char *password, const char* collection);
 
     PocketbaseConnection fork()
     {
@@ -65,6 +70,10 @@ struct SubscriptionEvent {
 
 class PocketbaseArduino
 {
+
+    DynamicJsonDocument connection_record;
+
+
     size_t subscription_count = 0;
     SubscriptionCtx subscription_ctx[5];
 
@@ -73,6 +82,13 @@ class PocketbaseArduino
     SubscriptionEvent query_subscription_response(SubscriptionCtx* sub);
 
 public:
+
+
+    DynamicJsonDocument& getConnectionRecord() 
+    {
+        return connection_record;
+    }
+
     PocketbaseArduino(const char *baseUrl); // Constructor
 
     // Methods to build collection and record URLs
@@ -90,9 +106,14 @@ public:
 
     void update_subscription();
 
-    bool login_passwd(const char *username, const char *password)
+    bool login_passwd(const char *username, const char *password, const char* user_db = "users")
     {
-        return main_connection.login_passwd(username, password);
+        connection_record = main_connection.login_passwd(username, password, user_db);
+        connection_record.shrinkToFit();
+        if(connection_record.size() == 0)
+        {
+            return false;
+        }
     }
 
     /**

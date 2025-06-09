@@ -45,18 +45,36 @@ void setup(){
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  pb.login_passwd(USER_NAME, USER_PASSWORD);
+  pb.login_passwd(USER_NAME, USER_PASSWORD, "launchers");
 
 
-  String result = pb.collection("manufacturers").getList();
+  String request = 
+    String("(should_load='true'&&loaded_at=\"\"&&launcher='") + pb.getConnectionRecord()["record"]["id"].as<String>() + "')";
+  String result = pb.collection("launches").getList(
+    "1", // page
+    "20", // perPage
+    nullptr, // sort 
+    request.c_str() // filter
+  );  
+  
+  if (result.isEmpty()) {
+    Serial.println("No launches found or error fetching launches.");
+  }
+  
+  Serial.println("Fetched launches: ");
+  Serial.println(result);
+
+  
 
   Serial.println("Result: ");
   Serial.println(result);
 
-
-  pb.subscribe("manufacturers", "*", [](String event, String record, void *ctx) {
+  pb.subscribe("launches", "*", [](String event, String record, void *ctx) {
     Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
   });
+//  pb.subscribe("manufacturers", "*", [](String event, String record, void *ctx) {
+//    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
+//  });
   Serial.println("finished loading.");
 }
 
