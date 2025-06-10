@@ -10,8 +10,7 @@
 
 #include <pulsar/config.hpp>
 
-#include <pulsar/pocketbase.hpp>
-
+#include <pocketbase.hpp>
 PocketbaseArduino pb("https://deathstar.cyp.sh/");
 
 void setup(){
@@ -72,12 +71,13 @@ void setup(){
     Serial.printf("Error connecting to Pocketbase: %s\n", pbTest.errorToString(pbHttpCode).c_str());
   }
   pbTest.end();
+  client.stop();
 
   pb.login_passwd(USER_NAME, USER_PASSWORD, "launchers");
 
 
   String request = 
-    String("(should_load=\"true\"&&loaded_at=\"\"&&launcher=\"") + pb.getConnectionRecord()["record"]["id"].as<String>() + "\")";
+    String("(should_load=true&&loaded_at=\"\"&&launcher=\"") + pb.getConnectionRecord()["record"]["id"].as<String>() + "\")";
   String result = pb.collection("launches").getList(
     "1", // page
     "20", // perPage
@@ -97,12 +97,12 @@ void setup(){
   Serial.println("Result: ");
   Serial.println(result);
 
+//  pb.subscribe("launches", "*", [](String event, String record, void *ctx) {
+//    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
+//  });
   pb.subscribe("launches", "*", [](String event, String record, void *ctx) {
     Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
   });
-//  pb.subscribe("manufacturers", "*", [](String event, String record, void *ctx) {
-//    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
-//  });
   Serial.println("finished loading.");
 }
 
