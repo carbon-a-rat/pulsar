@@ -13,6 +13,7 @@
 #include <pocketbase.hpp>
 PocketbaseArduino pb("https://deathstar.cyp.sh/");
 
+
 void setup(){
   Serial.begin(9600);
   // list available wifi 
@@ -29,8 +30,31 @@ void setup(){
   // Connect to a WiFi network
   // yeah I leak my wifi password, and it is weird, it's a private joke 
   // sorry for this beautiful showcase of professionalism.
+WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+    switch (event) {
+      case SYSTEM_EVENT_STA_GOT_IP:
+        Serial.printf("[Wifi] Got IP: %s\n", WiFi.localIP().toString().c_str());
+        break;
+      case SYSTEM_EVENT_STA_DISCONNECTED:
+        Serial.println("[Wifi] Disconnected from WiFi");
+        break;
+      case SYSTEM_EVENT_STA_CONNECTED:
+        Serial.println("[Wifi] Connected to WiFi");
+        break;
+      case SYSTEM_EVENT_AP_START:
+        Serial.println("[Wifi] Access Point started");
+        break;
+      case SYSTEM_EVENT_AP_STOP:
+        Serial.println("[Wifi] Access Point stopped");
+        break;
+      default:
+        Serial.println("[Wifi] Unhandled WiFi event: " + String(event));
 
-  WiFi.begin("Van FBI", "bosspicasso");
+        break;
+    }
+  }, WiFiEvent_t::ARDUINO_EVENT_MAX);
+  WiFi.begin("iPhone Emma", "biup8vd4ht8w1");
+  
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -54,6 +78,7 @@ void setup(){
     Serial.printf("Error getting public IP: %s\n", http.errorToString(httpCode).c_str());
   }
   http.end();
+  
 
   // Test connectivity to Pocketbase server
   Serial.println("Testing connectivity to Pocketbase server...");
@@ -88,11 +113,6 @@ void setup(){
   if (result.isEmpty()) {
     Serial.println("No launches found or error fetching launches.");
   }
-  
-  Serial.println("Fetched launches: ");
-  Serial.println(result);
-
-  
 
   Serial.println("Result: ");
   Serial.println(result);
@@ -100,13 +120,49 @@ void setup(){
 //  pb.subscribe("launches", "*", [](String event, String record, void *ctx) {
 //    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
 //  });
-  pb.subscribe("launches", "*", [](String event, String record, void *ctx) {
-    Serial.printf("Event: %s, Record: %s\n", event.c_str(), record.c_str());
+  pb.subscribe("launches", "*", [](SubscriptionEvent& ev, void *ctx) {
+    Serial.printf("Event: %s, Record: %s\n", ev.event.c_str(), ev.data.c_str());
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, ev.data);
+    if (error) {
+      Serial.printf("Failed to deserialize JSON: %s\n", error.c_str());
+      return;
+    }
+
+
+    if(doc["record"]["launcher"] == "n31794h75vdw95m")
+    {
+      if(doc["record"]["should_load"] == true && doc["record"]["loaded_at"] == "")
+      {
+        Serial.println("Loading launch...");
+        doc["record"]["should_load"] = false;
+        // do an update 
+
+        String body = doc["record"].as<String>();
+
+        pb.update(
+          ("launches"),
+          doc["record"]["id"].as<String>(),
+         body
+        );
+      }
+
+
+
+
+    }
+
   });
   Serial.println("finished loading.");
 }
 
+
+
+
 void loop() {
- // Serial.println("Updating subscription...");
+  //Serial.println("Updating subscription...");
+ // auto free_mem  = ESP.getFreeHeap();
+
+ // Serial.printf("Free memory: %d bytes\n", free_mem);
   pb.update_subscription();
 }
