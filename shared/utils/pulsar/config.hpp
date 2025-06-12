@@ -5,4 +5,4 @@
 
 
 #define USER_NAME "ariane"
-#define USER_PASSWORD "Enjoyably-Enunciate-Cure-Pasted5-Hydrogen-Hardhead"
+#define USER_PASSWORD // "password1234" // Example password, change it to your actual password
