@@ -8,7 +8,7 @@
 // assume that versions are not back compatible 
 // version 4 bit: 16 possible value
 
-
+#define MAX_BUFFERED_MESSAGE 32
 typedef enum : uint8_t {
     MESSAGE_KIND_LOG = 0,
     MESSAGE_KIND_PREPARE = 1, // only from the application -> server -> launchpad core 
@@ -90,10 +90,10 @@ static inline constexpr uint8_t ROCKET_S_ADDRESS = 0x0A;
 
 
 static size_t buffered_message = 0;
-static ProtocolMessage send_message_buffer[64];
+static ProtocolMessage send_message_buffer[MAX_BUFFERED_MESSAGE];
 
 static size_t received_message = 0;
-static ProtocolMessage received_message_buffer[64];
+static ProtocolMessage received_message_buffer[MAX_BUFFERED_MESSAGE];
 
 static inline bool has_received_message(ProtocolMessage *message) {
     if (received_message == 0) {
@@ -112,7 +112,7 @@ static inline bool has_received_message(ProtocolMessage *message) {
 }
 
 static inline bool add_received_message(ProtocolMessage *message) {
-    if (received_message > 128) {
+    if (received_message > MAX_BUFFERED_MESSAGE - 1) {
         // led should blink
         Serial.println("Buffer overflow"); 
         return false;
@@ -125,7 +125,7 @@ static inline bool add_received_message(ProtocolMessage *message) {
 }
 
 static inline bool send_message_to_master(ProtocolMessage *message) {
-    if (buffered_message > 128) {
+    if (buffered_message > MAX_BUFFERED_MESSAGE - 1) {
         // led should blink
         Serial.println("Buffer overflow"); 
         return false;
@@ -213,13 +213,14 @@ static inline bool setup_communication_slave(int sda, int scl, uint8_t address) 
     });
 
     Wire.onRequest([]() {
-        ProtocolMessage message;
+        ProtocolMessage message = {};
         if (request_from_master_callback(&message)) {
             Serial.println("Sending message");
             Wire.write((uint8_t*)&message, sizeof(ProtocolMessage));
+            Serial.println("Message sent successfully");
         }
         else {
-            Serial.println("Error: no message to send");
+           // Serial.println("Error: no message to send");
             Wire.write((uint8_t*)&message, sizeof(ProtocolMessage));
         }
     });

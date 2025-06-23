@@ -12,9 +12,10 @@ Ultimately, the project aims to experimentally determine the relationship betwee
 
 ## Boards 
 
-INSA is poor, and they don't have enough ESP32 boards for everyone. So we are using the ESP8266 Feather board from Adafruit.
-
-We will also use an arduino board and another Feather board for the launch pad.
+- Launchpad-launcher: the code for the Arduino Uno board that controls the launch pad and the launch of the rocket.
+- Launchpad-server: the code for esp32-S2 that serves as a way to communicate with backend.
+- Launchpad-rocket: the code for the Feather board that is linked to the rocket to receive flight data and send data to the launchpad-server board.
+- Rocket: The code of that is used inside the rocket
 
 ## Board instruction 
 
