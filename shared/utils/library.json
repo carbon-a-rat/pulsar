@@ -12,7 +12,7 @@
       }
     ],
     "dependencies": [
-
+	    "arduino-libraries/NTPClient@3.2.1"
     ],
     "license": "GPL",
     "frameworks": "*",
