@@ -5,4 +5,5 @@
 
 
 #define USER_NAME "ariane"
-#define USER_PASSWORD // "password1234" // Example password, change it to your actual password
+#define USER_PASSWORD "Ducky-Surging-Cyclic-Untaxed-Gurgling5-Dealing"
+

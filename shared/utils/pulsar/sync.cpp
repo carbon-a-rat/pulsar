@@ -1,3 +1,5 @@
+#ifdef ARDUINO_ARCH_ESP32
+
 #include "sync.hpp"
 
 
@@ -64,3 +66,5 @@ time_t current_epoch_time()
 {
     return timeClient.getEpochTime();
 }
+
+#endif

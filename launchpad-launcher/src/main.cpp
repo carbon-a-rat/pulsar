@@ -1,5 +1,7 @@
 #include <Arduino.h>
 // #include <HardwareSerial.h>
+#include <Arduino.h>
+#include <HardwareSerial.h>
 
 #include <Grove_I2C_Motor_Driver.h>
 
@@ -31,7 +33,7 @@ volatile int freq_flow = 0;            // Nombre d'impulsion reçu sur la denri�
 unsigned char flow_sensor = 2;
 const int RELAY_PIN = 9;
 
-float consigne_mL = 500.0; // Du coup pour ce code, on décide de ce qu'on veut ici
+float consigne_mL = 100.0; // Du coup pour ce code, on décide de ce qu'on veut ici
 
 float TOLERANCE = 50; // Tolérance en mL
 
@@ -49,7 +51,6 @@ void flow_ISR()
     freq_flow++;
     pulseCount++;
 }
-
 // ----- pression
 
 #include "DFRobot_MPX5700.h"
@@ -57,8 +58,8 @@ void flow_ISR()
 
 DFRobot_MPX5700 mpx5700(&Wire, I2C_ADDRESS_PRESSURE);
 
-const int RELAY_PIN_GAUCHE = 2;
-const int RELAY_PIN_DROITE = 3;
+const int RELAY_PIN_GAUCHE =6;
+const int RELAY_PIN_DROITE = 7;
 
 float consigne_bar = 6.0; // On met ce qu'on veut ici
 
@@ -66,10 +67,12 @@ float TOLERANCE_BAR = 0.1; // Au pif on verra bien mdr
 
 unsigned long current_time = 0;
 
+
 void setup()
 {
     Serial.begin(9600);
 
+    Serial.println("Started arduino");
     // ---- button
     pinMode(buttonPin, INPUT);
     pinMode(ledPin, OUTPUT);
@@ -83,7 +86,7 @@ void setup()
     Motor.begin(MOTOR_I2C_ADDRESS);
 
     // ---- eau
-    /*
+    
     Serial.println("Initialisation de la gestion de l'eau");
     
 
@@ -92,7 +95,6 @@ void setup()
 
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW); // Fermer la vanne au début (on passe en analog pour la piloter précisément)
-    */
   //  Serial.begin(9600);
     previous_time = millis();
     Serial.println("En attente de la consigne");
@@ -111,14 +113,26 @@ void setup()
         delay(1000);
     }
     Serial.println("i2c begin success");
-    mpx5700.setMeanSampleSize(/*Sample Quantity*/ 5);
+    mpx5700.setMeanSampleSize( 5);
     Serial.println("En attente de la consigne");
     launch_state = LAUNCH_WAIT;
+    
+
+    
+  // Set up the Arduino integrated LED
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW); // Turn off Arduino integrated LED initially
+  
+  // Initial I2C scan
+  //  scanI2C();
 }
 
 void loop()
 {
-
+  
+  // Request from launch-pad-rocket (ESP32)
+  
+  
     if (launch_state == LAUNCH_WAIT)
     {
         // Wait for the button to be pressed
@@ -131,16 +145,21 @@ void loop()
 
     if (launch_state == LAUNCH_PREPARE)
     {
+       digitalWrite(LED_BUILTIN, HIGH); // Turn on Arduino integrated LED
+      
+        Serial.println("Starting  launch command...");
+        delay(500); // Keep the LED on and wait
+
+        digitalWrite(LED_BUILTIN, LOW); // Turn on Arduino integrated LED
+        
+        Serial.println("Starting launch command...");
+        delay(500); // Keep the LED off and wait
+
         // Prepare for launch
         Serial.println("Preparing for launch...");
         // Here you can add code to prepare the rocket, like checking systems, etc.
         delay(300); // Simulate preparation time
-        launch_state = LAUNCH_FILL_WATER;
-    }
-
-    if(launch_state == LAUNCH_FILL_WATER)
-    {
-        launch_state = LAUNCH_FILL_PRESSURE;
+      //  launch_state = LAUNCH_FILL_WATER;
     }
     if (launch_state == LAUNCH_FILL_WATER)
     {

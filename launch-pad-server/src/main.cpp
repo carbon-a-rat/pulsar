@@ -9,6 +9,9 @@
 #include <WiFiClientSecure.h>
 #endif
 
+// for esp_wifi_set_band_mode
+#include <esp_wifi.h>
+
 #include <pulsar/config.hpp>
 
 #include <pocketbase.hpp>
@@ -57,11 +60,21 @@ void setup()
   Serial.begin(9600);
 
   //CONFIG_LWIP_MAX_SOCKETS
+  // set band mode to 5Ghz
+// WiFi.setBand(WIFI_BAND_5G); // Set WiFi band to 5GHz
   
   setup_communication_slave(21, 22, SERVER_S_ADDRESS); // SDA=21, SCL=22 for ESP32
   Wire.begin(SERVER_S_ADDRESS);
   Serial.print("I2C Slave initialized at address: 0x");
   Serial.println(SERVER_S_ADDRESS, HEX);
+
+
+  // set wifi_scan_method_t to other thing than wifi fast scan
+
+ // WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL); // Sort by signal strength
+
+  WiFi.setMinSecurity(WIFI_AUTH_WPA3_PSK); // Set minimum security to WPA2 PSK
+ // WiFi.setAutoReconnect(true); // Enable auto-reconnect
 
   // list available wifi
   Serial.println("Available WiFi networks:");
@@ -87,12 +100,15 @@ void setup()
     WiFi.onEvent(wifi_callback, static_cast<arduino_event_id_t>(i));
   }
   // WiFi.begin("iPhone Emma", "biup8vd4ht8w1");
-  WiFi.begin("Van FBI", "bosspicasso");
+  //WiFi.begin("HUAWEI P20 lite", "abcde1234");
+ WiFi.begin("Van FBI", "bosspicasso");
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
+
+
   }
 
   Serial.println("\nConnected to WiFi");
